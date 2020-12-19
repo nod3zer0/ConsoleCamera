@@ -8,12 +8,46 @@ using System.Text;
 using System.Threading.Tasks;
 using AForge.Video;
 using AForge.Video.DirectShow;
+using CommandLine;
+using CommandLine.Text;
 
 namespace ConsoleCamera
 {
 
+    //arguments for this console app
+    class Options
+    {
+        
+
+        [Option('h', "height", Required = true,
+          HelpText = "height default 160")]
+        public int height { get; set; }
+
+        [Option('w', "width", Required = true,
+          HelpText = "width default 160")]
+        public int width { get; set; }
+
+        [Option('p', "pixelSize", Required = true,
+         HelpText = "pixelSize default 5")]
+        public short pixelSize { get; set; }
+
+        [Option('i', "cameraInterface", Required = true,
+          HelpText = "number of camera interface default 3")]
+        public short cameraInterface { get; set; }
+
+        [HelpOption]
+        public string GetUsage()
+        {
+          
+            return HelpText.AutoBuild(this,
+              (HelpText current) => HelpText.DefaultParsingErrorsHandler(this, current));
 
 
+        }
+    }
+
+    ///copy pasted from stackowerflow from:https://stackoverflow.com/questions/6554536/possible-to-get-set-console-font-size-in-c-sharp-net
+    ///it works and writing code for changing font wasnt goal of this project for me
     public static class ConsoleHelper
     {
         private const int FixedWidthTrueType = 54;
@@ -99,22 +133,41 @@ namespace ConsoleCamera
     class Program
     {
         Bitmap newFrame = new Bitmap(1, 1);
-
+        //updates newFrame varriable every time new frame is available
         void videoSource_NewFrame(object sender, AForge.Video.NewFrameEventArgs eventArgs)
         {
-            //Cast the frame as Bitmap object and don't forget to use ".Clone()" otherwise
-            //you'll probably get access violation exceptions
             newFrame = (Bitmap)eventArgs.Frame.Clone();
         }
 
+        public static int height = 160;
+        public static int width = 160;
+        public static short pixelSize = 5;
 
         static void Main(string[] args)
         {
-
-         
-
             Program prog = new Program();
-            ConsoleHelper.SetCurrentFont("Consolas", 5);
+            int webcamera = 3; //webCamInterface (mine is 3)
+
+            var options = new Options();
+
+          //command line arguments
+            if (CommandLine.Parser.Default.ParseArguments(args, options))
+            {
+                webcamera = options.cameraInterface;
+                height = options.height;
+                width = options.width;
+                pixelSize = options.pixelSize;
+            }
+            else
+            {
+                 return;
+            }
+
+
+
+
+            //sets font size so its possible to show webcamera
+            ConsoleHelper.SetCurrentFont("Consolas", pixelSize);
             VideoCaptureDevice videoSource;
             FilterInfoCollection videosources = new FilterInfoCollection(FilterCategory.VideoInputDevice);
 
@@ -122,14 +175,14 @@ namespace ConsoleCamera
             if (videosources != null)
             {
                 //For example use first video device. You may check if this is your webcam.
-                videoSource = new VideoCaptureDevice(videosources[3].MonikerString);
+                videoSource = new VideoCaptureDevice(videosources[webcamera].MonikerString);
 
                 try
                 {
                     //Check if the video device provides a list of supported resolutions
                     if (videoSource.VideoCapabilities.Length > 0)
                     {
-                        string highestSolution = "300;150";
+                        string highestSolution = "0;0";
                         //Search for the highest resolution
                         for (int i = 0; i < videoSource.VideoCapabilities.Length; i++)
                         {
@@ -152,7 +205,6 @@ namespace ConsoleCamera
             while (true)
             {
 
-                //Bitmap bitmap = new Bitmap(@"C:\Users\game1\source\repos\ConsoleCamera\ConsoleCamera\Anonymous_emblem.svg.png");
                 DrawImage(prog.newFrame);
 
             }
@@ -164,56 +216,58 @@ namespace ConsoleCamera
 
         public static void DrawImage(Bitmap bitmap)
         {
-            char[,] arr = new char[400, 100];
-            string[] arr2 = new string[200];
-            //bitmap= ConvertToGrayScale(bitmap);
+            
 
-            double scale = /*0.25f*/ Math.Min(200f / bitmap.Width, 200f / bitmap.Height);
+            //lowers the resolution of camera
+            double scale = /*0.25f*/ Math.Max(width / (float)bitmap.Width, height / (float)bitmap.Height);
             Bitmap resized = new Bitmap(bitmap, new Size((int)(bitmap.Width * scale), (int)(bitmap.Height * scale)));
 
+            //It could be done with just arr2, and renderArray will be removed in future versions
+            char[,] arr = new char[resized.Width, resized.Height];
+            string[] renderArray = new string[resized.Height];
 
 
+            //assing 5 different chars to brightness values
             for (int y = 0; y < arr.GetLength(1); y++)
             {
-                for (int x = 0; x < arr.GetLength(0); x += 2)
+                for (int x = 0; x < arr.GetLength(0); x++)
                 {
-                    //░▒▓█
-
+                    //░▒▓█ if I forget how its written
+                   
+                    //for some reason it was crashing, it will be repaired in future versions
                     if (y >= resized.Height)
                     {
                         break;
                     }
-                    float brightness = resized.GetPixel(x / 2, y).GetBrightness();
+                    float brightness = resized.GetPixel(x, y).GetBrightness();
 
+
+                    //assing 5 different chars to brightness values
+                    //it will be optimalized in future versions
                     if (1f >= brightness && brightness >= 0.8f)
                     {
-                        arr[x, y] = '█';
-                        arr[x + 1, y] = '█';
-                        arr2[y] += "██";
+                       
+                        renderArray[y] += "██";
                     }
                     else if (0.8f > brightness && brightness >= 0.6f)
                     {
-                        arr[x, y] = '▓';
-                        arr[x + 1, y] = '▓';
-                        arr2[y] += "▓▓";
+                      
+                        renderArray[y] += "▓▓";
                     }
                     else if (0.6f > brightness && brightness >= 0.4f)
                     {
-                        arr[x, y] = '▒';
-                        arr[x + 1, y] = '▒';
-                        arr2[y] += "▒▒";
+                       
+                        renderArray[y] += "▒▒";
                     }
                     else if (0.4f > brightness && brightness >= 0.2f)
                     {
-                        arr[x, y] = '░';
-                        arr[x + 1, y] = '░';
-                        arr2[y] += "░░";
+                       
+                        renderArray[y] += "░░";
                     }
                     else if (0.2f > brightness)
                     {
-                        arr[x, y] = ' ';
-                        arr[x + 1, y] = ' ';
-                        arr2[y] += "  ";
+                    
+                        renderArray[y] += "  ";
                     }
 
 
@@ -224,40 +278,17 @@ namespace ConsoleCamera
 
 
 
-
+            //drawing final image to console
             for (int y = 0; y < arr.GetLength(1); y++)
             {
-                Console.WriteLine(arr2[y]);
+                Console.WriteLine(renderArray[y]);
             }
 
-            //var fonts = ConsoleHelper.ConsoleFonts;
-            //for (int f = 0; f < fonts.Length; f++)
-            //    Console.WriteLine("{0}: X={1}, Y={2}",
-            //       fonts[f].Index, fonts[f].SizeX, fonts[f].SizeY);
-
-            //ConsoleHelper.SetConsoleFont(5);
-            //ConsoleHelper.SetConsoleIcon(SystemIcons.Information);
+            //sets cursor to top of console because its faster than Console.Clear();
             Console.SetCursorPosition(0, 0);
 
         }
 
-        public static Bitmap ConvertToGrayScale(Bitmap c)
-        {
-
-            Bitmap d;
-            int x, y;
-
-            // Loop through the images pixels to reset color.
-            for (x = 0; x < c.Width; x++)
-            {
-                for (y = 0; y < c.Height; y++)
-                {
-                    Color pixelColor = c.GetPixel(x, y);
-                    Color newColor = Color.FromArgb(pixelColor.R, 0, 0);
-                    c.SetPixel(x, y, newColor); // Now greyscale
-                }
-            }
-            return c;
-        }
+       
     }
 }
