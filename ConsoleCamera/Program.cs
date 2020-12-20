@@ -17,7 +17,7 @@ namespace ConsoleCamera
     //arguments for this console app
     class Options
     {
-        
+
 
         [Option('h', "height", Required = true,
           HelpText = "height default 160")]
@@ -35,10 +35,39 @@ namespace ConsoleCamera
           HelpText = "number of camera interface default 3")]
         public short cameraInterface { get; set; }
 
+
+        bool _showCameraInterfaces;
+
+        [Option('s', "showCameraInterfaces",
+         HelpText = "showesCameraInterfaces")]
+        public bool showCameraInterfaces
+        {
+            get { return _showCameraInterfaces; }
+            set
+            {
+                _showCameraInterfaces = value;
+
+                VideoCaptureDevice videoSource;
+                FilterInfoCollection videosources = new FilterInfoCollection(FilterCategory.VideoInputDevice);
+
+
+                for (int x = 0; x < videosources.Count; x++)
+                {
+                    Console.WriteLine(x + ":\t" + videosources[x].Name);
+                }
+
+
+            }
+        }
+
         [HelpOption]
         public string GetUsage()
         {
-          
+            if (showCameraInterfaces)
+            {
+                return "";
+            }
+
             return HelpText.AutoBuild(this,
               (HelpText current) => HelpText.DefaultParsingErrorsHandler(this, current));
 
@@ -145,12 +174,13 @@ namespace ConsoleCamera
 
         static void Main(string[] args)
         {
+            ConsoleHelper.SetCurrentFont("Consolas", 15);
             Program prog = new Program();
             int webcamera = 3; //webCamInterface (mine is 3)
 
             var options = new Options();
 
-          //command line arguments
+            //command line arguments
             if (CommandLine.Parser.Default.ParseArguments(args, options))
             {
                 webcamera = options.cameraInterface;
@@ -160,7 +190,7 @@ namespace ConsoleCamera
             }
             else
             {
-                 return;
+                return;
             }
 
 
@@ -216,7 +246,7 @@ namespace ConsoleCamera
 
         public static void DrawImage(Bitmap bitmap)
         {
-            
+
 
             //lowers the resolution of camera
             double scale = /*0.25f*/ Math.Max(width / (float)bitmap.Width, height / (float)bitmap.Height);
@@ -233,7 +263,7 @@ namespace ConsoleCamera
                 for (int x = 0; x < arr.GetLength(0); x++)
                 {
                     //░▒▓█ if I forget how its written
-                   
+
                     //for some reason it was crashing, it will be repaired in future versions
                     if (y >= resized.Height)
                     {
@@ -246,27 +276,27 @@ namespace ConsoleCamera
                     //it will be optimalized in future versions
                     if (1f >= brightness && brightness >= 0.8f)
                     {
-                       
+
                         renderArray[y] += "██";
                     }
                     else if (0.8f > brightness && brightness >= 0.6f)
                     {
-                      
+
                         renderArray[y] += "▓▓";
                     }
                     else if (0.6f > brightness && brightness >= 0.4f)
                     {
-                       
+
                         renderArray[y] += "▒▒";
                     }
                     else if (0.4f > brightness && brightness >= 0.2f)
                     {
-                       
+
                         renderArray[y] += "░░";
                     }
                     else if (0.2f > brightness)
                     {
-                    
+
                         renderArray[y] += "  ";
                     }
 
@@ -289,6 +319,6 @@ namespace ConsoleCamera
 
         }
 
-       
+
     }
 }
